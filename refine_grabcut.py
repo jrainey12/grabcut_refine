@@ -66,7 +66,7 @@ def grabcut(in_img,mask_path):
 	img = cv.imread(in_img)
 	#img = cv.imread(mask_path)
 	kernel_1 = np.ones((5,5),np.uint8)
-	kernel_2 = np.ones((10,10),np.uint8)
+	kernel_2 = np.ones((3,3),np.uint8)
 	mask_in = cv.imread(mask_path,0)
 	mask_f = cv.erode(mask_in,kernel_1,iterations=1) 
 	mask_b = cv.dilate(mask_in,kernel_2,iterations=1)
@@ -88,8 +88,8 @@ def grabcut(in_img,mask_path):
 				#mask_1[y,x] = 127
 
 	#print mask_1
-#	plt.imshow(mask_1)
-#	plt.show()
+	#plt.imshow(mask_1)
+	#plt.show()
 
 	#return None
 	#height,width = mask_f.shape
