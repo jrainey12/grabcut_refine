@@ -5,8 +5,9 @@ from glob import glob
 from os.path import join, basename, exists
 import argparse
 import os
+from itertools import product
 
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 
 def main(base_dir,sil_dir, out_dir):
 	
@@ -37,7 +38,7 @@ def main(base_dir,sil_dir, out_dir):
 
 
 		for e,(x,y) in enumerate(zip(imgs,masks)):
-			print e
+			#print e
 			if not basename(x) == basename(y):
 				print len(imgs)
 				del imgs[e]
@@ -47,8 +48,9 @@ def main(base_dir,sil_dir, out_dir):
 			ref_sil = grabcut(i,m)
 			print "Processed :", i, m
 
-			if not ref_sil == None:
-					
+		#	if not ref_sil == None:
+			if len(ref_sil) > 1:	
+	
 				split_base_dir = d.split('/')
 				length = len(split_base_dir)
 				#print split_base_dir
@@ -65,28 +67,45 @@ def grabcut(in_img,mask_path):
 	
 	img = cv.imread(in_img)
 	#img = cv.imread(mask_path)
-	kernel_1 = np.ones((5,5),np.uint8)
-	kernel_2 = np.ones((3,3),np.uint8)
+	kernel_1 = np.ones((7,7),np.uint8)
+	#kernel_2 = np.ones((3,3),np.uint8)
 	mask_in = cv.imread(mask_path,0)
 	mask_f = cv.erode(mask_in,kernel_1,iterations=1) 
-	mask_b = cv.dilate(mask_in,kernel_2,iterations=1)
-
+	#mask_b = cv.dilate(mask_in,kernel_2,iterations=1)
+	mask_b = mask_in
 
 	mask_1 = mask_f
 	height,width = mask_1.shape
-	for x in range(0,(width-1)):
-		for y in range(0,height-1):
-			if mask_f[y,x] == 255 and mask_b[y,x] == 255:
-				mask_1[y,x] = cv.GC_FGD
-				#mask_1[y,x] = 255
+	#~ for x in range(0,(width-1)):
+		#~ for y in range(0,height-1):
+			#~ if mask_f[y,x] == 255 and mask_b[y,x] == 255:
+				#~ mask_1[y,x] = cv.GC_FGD
+				#~ #mask_1[y,x] = 255
 		
-			elif mask_f[y,x] == 0 and mask_b[y,x] == 0:
-				mask_1[y,x] = cv.GC_BGD
-				#mask_1[y,x] = 0
-			elif mask_f[y,x] == 0 and mask_b[y,x] == 255:
-				mask_1[y,x] = cv.GC_PR_BGD
-				#mask_1[y,x] = 127
+			#~ elif mask_f[y,x] == 0 and mask_b[y,x] == 0:
+				#~ mask_1[y,x] = cv.GC_BGD
+				#~ #mask_1[y,x] = 0
+			#~ elif mask_f[y,x] == 0 and mask_b[y,x] == 255:
+				#~ mask_1[y,x] = cv.GC_PR_BGD
+				#~ #mask_1[y,x] = 127
 
+	for pos in product(range(height-1), range(width-1)):
+	
+			pixel_f = mask_f.item(pos)
+			pixel_b = mask_b.item(pos)
+			
+			if pixel_f == 255 and pixel_b == 255:
+				mask_1[pos] = cv.GC_FGD
+				
+		
+			elif pixel_f == 0 and pixel_b == 0:
+				mask_1[pos] = cv.GC_BGD
+				
+			elif pixel_f == 0 and pixel_b == 255:
+				mask_1[pos]  = cv.GC_PR_BGD
+				
+				
+			
 	#print mask_1
 	#plt.imshow(mask_1)
 	#plt.show()
@@ -106,12 +125,12 @@ def grabcut(in_img,mask_path):
 	#rect = (175,45,80,160)
 	#mask[mask == 0] = 0
 	#mask[mask == 255] = 1
-	#try:
-	mask, bgdModel, fgdModel = cv.grabCut(img,mask_1,None,bgdModel,fgdModel,5,cv.GC_INIT_WITH_MASK)
+	try:
+		mask, bgdModel, fgdModel = cv.grabCut(img,mask_1,None,bgdModel,fgdModel,5,cv.GC_INIT_WITH_MASK)
 
-	#except:
+	except:
 	#	#"Mask Error"
-	#	return None
+		return [0]
 	mask2 = np.where((mask==2)|(mask==0),0,1).astype('uint8')
 	img = img*mask2[:,:,np.newaxis]
 	
@@ -127,37 +146,6 @@ def grabcut(in_img,mask_path):
 
 	return img_thresh
 
-def old_grabcut(sil,mask_path):
-	
-	img = cv.imread(sil)
-	kernel = np.ones((3,3),np.uint8)
-	mask = cv.imread(mask_path,0)
-	mask = cv.erode(mask,kernel,iterations=1) 
-	height,width = mask.shape
-	for x in range(0,(width-1)):
-		for y in range(0,height-1):
-			#print mask[y,x]
-			if mask[y,x] == 255:
-				mask[y,x] = cv.GC_FGD
-				#print mask[y,x]
-			else: 
-				mask[y,x] = cv.GC_BGD
-	bgdModel = np.zeros((1,65),np.float64)
-	fgdModel = np.zeros((1,65),np.float64)
-	#rect = (175,45,80,160)
-	#mask[mask == 0] = 0
-	#mask[mask == 255] = 1
-	try:
-		mask, bgdModel, fgdModel = cv.grabCut(img,mask,None,bgdModel,fgdModel,5,cv.GC_INIT_WITH_MASK)
-
-	except:
-		#"Mask Error"
-		return None
-	mask2 = np.where((mask==2)|(mask==0),0,1).astype('uint8')
-	img = img*mask2[:,:,np.newaxis]
-	#plt.imshow(img)
-	#plt.show()
-	return img
 
 
 def trim_imgs(imgs, first_mask):
