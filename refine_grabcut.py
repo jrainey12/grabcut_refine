@@ -7,10 +7,15 @@ import argparse
 import os
 from itertools import product
 
-#np.set_printoptions(threshold=np.nan)
 
 def main(base_dir,sil_dir, out_dir):
-	
+"""
+Main function handles the data  inputs and output of the final silhouette.
+
+base_dir - directory of the images.
+sil_dir - directory of the silhouette images.
+out_dir - directory to save the final silhouettes.
+"""
 
 	lowest_dirs = []
 	for root,dirs,files in os.walk(base_dir):
@@ -24,8 +29,7 @@ def main(base_dir,sil_dir, out_dir):
 
 	lowest_dirs = sorted(lowest_dirs)
 	lowest_sil_dirs = sorted(lowest_sil_dirs)
-	#print lowest_dirs
-	#print len(lowest_dirs)
+	
 	for d,s in zip(lowest_dirs,lowest_sil_dirs):
 			
 
@@ -33,27 +37,31 @@ def main(base_dir,sil_dir, out_dir):
 	
 		masks = sorted(glob(join(s,'*.png')))
 		
+		#Remove any empty frames from the start and end of the image sequence.
 		if not basename(imgs[0]) == basename(masks[0]):
 			imgs = trim_imgs(imgs, masks[0])
 
-
+		#Remove any image frames which don't have a corresponding silhouette.
 		for e,(x,y) in enumerate(zip(imgs,masks)):
-			#print e
+			
 			if not basename(x) == basename(y):
 				print len(imgs)
 				del imgs[e]
 				break
 		for i,m in zip(imgs,masks):
-
+			
+			#Perform grabcut refinement.
 			ref_sil = grabcut(i,m)
 			print "Processed :", i, m
 
-		#	if not ref_sil == None:
+		
 			if len(ref_sil) > 1:	
-	
+				
+		
 				split_base_dir = d.split('/')
 				length = len(split_base_dir)
-				#print split_base_dir
+
+				#define the output folder.				
 				out_folder = join(out_dir,split_base_dir[length-3],split_base_dir[length-2],split_base_dir[length-1])
 		
 				if not exists(out_folder):
@@ -64,30 +72,32 @@ def main(base_dir,sil_dir, out_dir):
 				print "Mask Error"
 
 def grabcut(in_img,mask_path):
-	
+"""
+Use the grabcut algorithm to refine silhouetttes.
+
+in_img - coloured image.
+mask_path - binary silhouette image to form mask.
+"""
 	img = cv.imread(in_img)
-	#img = cv.imread(mask_path)
+	
 	kernel_1 = np.ones((7,7),np.uint8)
-	#kernel_2 = np.ones((3,3),np.uint8)
+
+	#Create an eroded copy of the mask to form the inner foreground
+	# section of the mask.
 	mask_in = cv.imread(mask_path,0)
 	mask_f = cv.erode(mask_in,kernel_1,iterations=1) 
-	#mask_b = cv.dilate(mask_in,kernel_2,iterations=1)
-	mask_b = mask_in
 
+	#use the input mask as the background section of the mask.
+	mask_b = mask_in
+	
+	#New mask to save final mask to.
 	mask_1 = mask_f
+
 	height,width = mask_1.shape
-	#~ for x in range(0,(width-1)):
-		#~ for y in range(0,height-1):
-			#~ if mask_f[y,x] == 255 and mask_b[y,x] == 255:
-				#~ mask_1[y,x] = cv.GC_FGD
-				#~ #mask_1[y,x] = 255
-		
-			#~ elif mask_f[y,x] == 0 and mask_b[y,x] == 0:
-				#~ mask_1[y,x] = cv.GC_BGD
-				#~ #mask_1[y,x] = 0
-			#~ elif mask_f[y,x] == 0 and mask_b[y,x] == 255:
-				#~ mask_1[y,x] = cv.GC_PR_BGD
-				#~ #mask_1[y,x] = 127
+	
+	#Create mask for grabcut. Iterate through both masks, where both masks have
+	# white pixels set to foreground, where both are black set to background and 
+	# where both are different set to possible background.
 
 	for pos in product(range(height-1), range(width-1)):
 	
@@ -106,44 +116,30 @@ def grabcut(in_img,mask_path):
 				
 				
 			
-	#print mask_1
-	#plt.imshow(mask_1)
-	#plt.show()
-
-	#return None
-	#height,width = mask_f.shape
-	#for x in range(0,(width-1)):
-	#	for y in range(0,height-1):
-	#		#print mask[y,x]
-	#		if mask_f[y,x] == 255:
-	#			mask_f[y,x] = cv.GC_FGD
-	#		else: 
-	#			mask_f[y,x] = cv.GC_BGD
+	
 
 	bgdModel = np.zeros((1,65),np.float64)
 	fgdModel = np.zeros((1,65),np.float64)
-	#rect = (175,45,80,160)
-	#mask[mask == 0] = 0
-	#mask[mask == 255] = 1
+	
+	#Perform grabcut operation with image and final mask.
 	try:
 		mask, bgdModel, fgdModel = cv.grabCut(img,mask_1,None,bgdModel,fgdModel,5,cv.GC_INIT_WITH_MASK)
 
 	except:
-	#	#"Mask Error"
+		#If grabcut fails return an empty list.
 		return [0]
+
 	mask2 = np.where((mask==2)|(mask==0),0,1).astype('uint8')
 	img = img*mask2[:,:,np.newaxis]
+	
+	#Convert to Grayscale and threshold image to produce the final silhouette.
 	
 	img_bw = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 	thresh = 10
 	img_thresh = cv.threshold(img_bw, thresh, 255, cv.THRESH_BINARY)[1]
 
-	#plt.imshow(img_thresh)
-	#plt.show()
-
-#	plt.imshow(img)
-#	plt.show()
-
+	#This can be changed to "return	img" to return the coloured image rather
+	# than the silhouette.
 	return img_thresh
 
 
@@ -180,5 +176,5 @@ if __name__ == '__main__':
         help="Directory to save refined images to.")       
 	
 	args = parser.parse_args()
-	#joint_generator(args.base_dir)
+
 	main(args.base_dir, args.sil_dir,args.out_dir)
