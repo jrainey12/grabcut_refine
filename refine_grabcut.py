@@ -9,22 +9,22 @@ from itertools import product
 
 
 def main(base_dir,sil_dir, out_dir):
-"""
-Main function handles the data  inputs and output of the final silhouette.
+	"""
+	Main function handles the data  inputs and output of the final silhouette.
 
-base_dir - directory of the images.
-sil_dir - directory of the silhouette images.
-out_dir - directory to save the final silhouettes.
-"""
+	base_dir - directory of the images.
+	sil_dir - directory of the silhouette images.
+	out_dir - directory to save the final silhouettes.
+	"""
 
 	lowest_dirs = []
 	for root,dirs,files in os.walk(base_dir):
-   		if files and not dirs:
+		if files and not dirs:
 			lowest_dirs.append(root)
 	
 	lowest_sil_dirs = []
 	for root,dirs,files in os.walk(sil_dir):
-   		if files and not dirs:
+		if files and not dirs:
 			lowest_sil_dirs.append(root)
 
 	lowest_dirs = sorted(lowest_dirs)
@@ -45,14 +45,14 @@ out_dir - directory to save the final silhouettes.
 		for e,(x,y) in enumerate(zip(imgs,masks)):
 			
 			if not basename(x) == basename(y):
-				print len(imgs)
+				print (len(imgs))
 				del imgs[e]
 				break
 		for i,m in zip(imgs,masks):
 			
 			#Perform grabcut refinement.
 			ref_sil = grabcut(i,m)
-			print "Processed :", i, m
+			print ("Processed :", i, m)
 
 		
 			if len(ref_sil) > 1:	
@@ -69,15 +69,15 @@ out_dir - directory to save the final silhouettes.
 
 				cv.imwrite(join(out_folder, basename(i)), ref_sil)
 			else:
-				print "Mask Error"
+				print ("Mask Error")
 
 def grabcut(in_img,mask_path):
-"""
-Use the grabcut algorithm to refine silhouetttes.
+	"""
+	Use the grabcut algorithm to refine silhouetttes.
 
-in_img - coloured image.
-mask_path - binary silhouette image to form mask.
-"""
+	in_img - coloured image.
+	mask_path - binary silhouette image to form mask.
+	"""
 	img = cv.imread(in_img)
 	
 	kernel_1 = np.ones((7,7),np.uint8)
